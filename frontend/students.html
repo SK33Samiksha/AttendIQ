@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Students — AttendIQ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/shared.css"/>
+</head>
+<body>
+  <div class="sidebar" id="sidebar"></div>
+  <div id="toast"></div>
+
+  <!-- Add/Edit Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <h3 id="modalTitle">Add Student</h3>
+      <input type="hidden" id="editId"/>
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input type="text" id="sName" placeholder="e.g. Rahul Patil"/>
+        </div>
+        <div class="form-group">
+          <label>Roll No *</label>
+          <input type="text" id="sRoll" placeholder="e.g. 101"/>
+        </div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="sEmail" placeholder="student@email.com"/>
+        </div>
+        <div class="form-group">
+          <label>Class</label>
+          <input type="text" id="sClass" placeholder="e.g. MCA-1"/>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveStudent()">Save Student</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div class="page-header">
+      <div><h1>Students</h1><p>Manage student records</p></div>
+      <button class="btn btn-primary" onclick="openModal()">+ Add Student</button>
+    </div>
+
+    <div class="card">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+        <div class="search-bar" style="flex:1;">
+          <span>🔍</span>
+          <input type="text" id="searchInput" placeholder="Search by name or roll no…" oninput="filterStudents()"/>
+        </div>
+        <span id="studentCount" style="font-size:.85rem; color:var(--muted); white-space:nowrap;"></span>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead><tr>
+            <th>#</th><th>Name</th><th>Roll No</th><th>Email</th><th>Class</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="studentBody">
+            <tr><td colspan="6"><div class="empty-state"><div class="icon">⏳</div><p>Loading…</p></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    if (!requireAuth()) throw 0;
+    document.getElementById('sidebar').innerHTML = renderSidebar('students');
+
+    let allStudents = [];
+
+    async function loadStudents() {
+      const res = await apiFetch('/students');
+      allStudents = res.success ? res.data : [];
+      filterStudents();
+    }
+
+    function filterStudents() {
+      const q = document.getElementById('searchInput').value.toLowerCase();
+      const filtered = allStudents.filter(s =>
+        s.name.toLowerCase().includes(q) || s.roll_no.toLowerCase().includes(q)
+      );
+      document.getElementById('studentCount').textContent = `${filtered.length} student(s)`;
+      renderTable(filtered);
+    }
+
+    function renderTable(data) {
+      const tbody = document.getElementById('studentBody');
+      if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="icon">👤</div><p>No students found.</p></div></td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.map((s, i) => `
+        <tr>
+          <td style="color:var(--muted); font-size:.8rem;">${i+1}</td>
+          <td>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="width:32px; height:32px; border-radius:50%; background:var(--paper);
+                border:1.5px solid var(--border); display:grid; place-items:center;
+                font-weight:700; font-size:.85rem; color:var(--muted);">${s.name.charAt(0)}</div>
+              <strong>${s.name}</strong>
+            </div>
+          </td>
+          <td>${s.roll_no}</td>
+          <td>${s.email || '<span style="color:var(--muted)">—</span>'}</td>
+          <td>${s.class || '<span style="color:var(--muted)">—</span>'}</td>
+          <td>
+            <button class="btn btn-secondary btn-sm" onclick="editStudent(${s.id})">Edit</button>
+            <button class="btn btn-danger btn-sm" style="margin-left:6px;" onclick="deleteStudent(${s.id}, '${s.name}')">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function openModal(id) {
+      document.getElementById('modalTitle').textContent = id ? 'Edit Student' : 'Add Student';
+      document.getElementById('editId').value  = id || '';
+      document.getElementById('modalOverlay').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('modalOverlay').classList.remove('open');
+      ['sName','sRoll','sEmail','sClass','editId'].forEach(id => document.getElementById(id).value = '');
+    }
+
+    function editStudent(id) {
+      const s = allStudents.find(x => x.id === id);
+      if (!s) return;
+      document.getElementById('sName').value  = s.name;
+      document.getElementById('sRoll').value  = s.roll_no;
+      document.getElementById('sEmail').value = s.email || '';
+      document.getElementById('sClass').value = s.class || '';
+      openModal(id);
+    }
+
+    async function saveStudent() {
+      const id    = document.getElementById('editId').value;
+      const name  = document.getElementById('sName').value.trim();
+      const roll  = document.getElementById('sRoll').value.trim();
+      const email = document.getElementById('sEmail').value.trim();
+      const cls   = document.getElementById('sClass').value.trim();
+
+      if (!name || !roll) { showToast('Name and Roll No are required.', 'error'); return; }
+
+      const body = { name, roll_no: roll, email, class: cls };
+      const res = id
+        ? await apiFetch(`/students/${id}`, { method: 'PUT',    body: JSON.stringify(body) })
+        : await apiFetch('/students',        { method: 'POST',   body: JSON.stringify(body) });
+
+      if (res.success) {
+        showToast(res.message, 'success');
+        closeModal(); loadStudents();
+      } else {
+        showToast(res.message || 'Error saving student.', 'error');
+      }
+    }
+
+    async function deleteStudent(id, name) {
+      if (!confirm(`Delete student "${name}"? This will also delete their attendance records.`)) return;
+      const res = await apiFetch(`/students/${id}`, { method: 'DELETE' });
+      if (res.success) { showToast('Student deleted.', 'success'); loadStudents(); }
+      else showToast(res.message, 'error');
+    }
+
+    // Close modal on overlay click
+    document.getElementById('modalOverlay').addEventListener('click', e => {
+      if (e.target === e.currentTarget) closeModal();
+    });
+
+    loadStudents();
+  </script>
+</body>
+</html>

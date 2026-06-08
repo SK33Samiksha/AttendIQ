@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Records — AttendIQ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/shared.css"/>
+</head>
+<body>
+  <div class="sidebar" id="sidebar"></div>
+  <div id="toast"></div>
+
+  <div class="main-content">
+    <div class="page-header">
+      <div><h1>Attendance Records</h1><p>View and filter all attendance entries</p></div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card" style="margin-bottom:20px;">
+      <div class="form-row cols-3">
+        <div class="form-group">
+          <label>Subject</label>
+          <select id="filterSubject" onchange="loadRecords()">
+            <option value="">All Subjects</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="filterDate" onchange="loadRecords()"/>
+        </div>
+        <div class="form-group">
+          <label>Search Student</label>
+          <div class="search-bar">
+            <span>🔍</span>
+            <input type="text" id="searchInput" placeholder="Name or Roll No…" oninput="filterTable()"/>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <h3 style="font-family:'Syne',sans-serif; font-size:1rem; font-weight:700;">Records <span id="recordCount" style="font-size:.8rem; color:var(--muted); font-family:'DM Sans',sans-serif; font-weight:400;"></span></h3>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr>
+            <th>#</th><th>Student</th><th>Roll No</th><th>Subject</th><th>Date</th><th>Status</th>
+          </tr></thead>
+          <tbody id="recordsBody">
+            <tr><td colspan="6"><div class="empty-state"><div class="icon">⏳</div><p>Loading…</p></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    if (!requireAuth()) throw 0;
+    document.getElementById('sidebar').innerHTML = renderSidebar('records');
+
+    let allRecords = [];
+
+    async function initSubjects() {
+      const res = await apiFetch('/subjects');
+      if (res.success) {
+        const sel = document.getElementById('filterSubject');
+        res.data.forEach(s => {
+          const o = document.createElement('option');
+          o.value = s.id; o.textContent = s.name;
+          sel.appendChild(o);
+        });
+      }
+    }
+
+    async function loadRecords() {
+      const subjectId = document.getElementById('filterSubject').value;
+      const date      = document.getElementById('filterDate').value;
+
+      let url = '/attendance/by-date?';
+      if (date)      url += `date=${date}&`;
+      if (subjectId) url += `subject_id=${subjectId}&`;
+
+      const res = await apiFetch(url);
+      allRecords = res.success ? res.data : [];
+      filterTable();
+    }
+
+    function filterTable() {
+      const q = document.getElementById('searchInput').value.toLowerCase();
+      const rows = allRecords.filter(r =>
+        r.student_name.toLowerCase().includes(q) || r.roll_no.toLowerCase().includes(q)
+      );
+
+      document.getElementById('recordCount').textContent = `(${rows.length} records)`;
+      const tbody = document.getElementById('recordsBody');
+
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="icon">📭</div><p>No records found.</p></div></td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows.map((r, i) => `
+        <tr>
+          <td style="color:var(--muted); font-size:.8rem;">${i+1}</td>
+          <td><strong>${r.student_name}</strong></td>
+          <td>${r.roll_no}</td>
+          <td>${r.subject_name}</td>
+          <td>${formatDate(r.date)}</td>
+          <td><span class="badge ${r.status === 'Present' ? 'present' : 'absent'}">${r.status}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    initSubjects();
+    loadRecords();
+  </script>
+</body>
+</html>

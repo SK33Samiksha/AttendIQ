@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reports — AttendIQ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/shared.css"/>
+</head>
+<body>
+  <div class="sidebar" id="sidebar"></div>
+  <div id="toast"></div>
+
+  <div class="main-content">
+    <div class="page-header">
+      <div><h1>Reports</h1><p>Attendance percentage summary per student</p></div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card" style="margin-bottom:20px;">
+      <div class="form-row cols-3">
+        <div class="form-group">
+          <label>Filter by Subject</label>
+          <select id="filterSubject" onchange="loadSummary()">
+            <option value="">All Subjects</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Min Percentage</label>
+          <select id="filterMin" onchange="filterTable()">
+            <option value="0">All</option>
+            <option value="75">≥ 75% (Good)</option>
+            <option value="50">≥ 50% (Average)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Search</label>
+          <div class="search-bar">
+            <span>🔍</span>
+            <input type="text" id="searchInput" placeholder="Student name…" oninput="filterTable()"/>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div style="display:flex; gap:16px; margin-bottom:16px; font-size:.82rem; color:var(--muted);">
+      <span><span class="badge high" style="margin-right:4px;">■</span> ≥75% Good</span>
+      <span><span class="badge mid" style="margin-right:4px;">■</span> 50–74% Average</span>
+      <span><span class="badge low" style="margin-right:4px;">■</span> &lt;50% Poor</span>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <h3 style="font-family:'Syne',sans-serif; font-size:1rem; font-weight:700;">Percentage Summary</h3>
+        <span id="rowCount" style="font-size:.82rem; color:var(--muted);"></span>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr>
+            <th>#</th><th>Student</th><th>Roll No</th><th>Class</th><th>Subject</th>
+            <th>Total</th><th>Present</th><th>Absent</th><th>Percentage</th>
+          </tr></thead>
+          <tbody id="reportBody">
+            <tr><td colspan="9"><div class="empty-state"><div class="icon">⏳</div><p>Loading…</p></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    if (!requireAuth()) throw 0;
+    document.getElementById('sidebar').innerHTML = renderSidebar('reports');
+
+    let allData = [];
+
+    async function initSubjects() {
+      const res = await apiFetch('/subjects');
+      if (res.success) {
+        const sel = document.getElementById('filterSubject');
+        res.data.forEach(s => {
+          const o = document.createElement('option');
+          o.value = s.id; o.textContent = s.name;
+          sel.appendChild(o);
+        });
+      }
+    }
+
+    async function loadSummary() {
+      const subjectId = document.getElementById('filterSubject').value;
+      let url = '/attendance/summary';
+      if (subjectId) url += `?subject_id=${subjectId}`;
+      const res = await apiFetch(url);
+      allData = res.success ? res.data : [];
+      filterTable();
+    }
+
+    function filterTable() {
+      const q   = document.getElementById('searchInput').value.toLowerCase();
+      const min = parseFloat(document.getElementById('filterMin').value) || 0;
+
+      const filtered = allData.filter(r =>
+        r.student_name.toLowerCase().includes(q) && r.percentage >= min
+      );
+
+      document.getElementById('rowCount').textContent = `${filtered.length} record(s)`;
+      const tbody = document.getElementById('reportBody');
+
+      if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon">📭</div><p>No data found.</p></div></td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map((r, i) => {
+        const cls = pctClass(r.percentage);
+        return `<tr>
+          <td style="color:var(--muted); font-size:.8rem;">${i+1}</td>
+          <td><strong>${r.student_name}</strong></td>
+          <td>${r.roll_no}</td>
+          <td>${r.class || '—'}</td>
+          <td>${r.subject_name}</td>
+          <td style="text-align:center;">${r.total_classes}</td>
+          <td style="text-align:center; color:var(--green); font-weight:600;">${r.present_count}</td>
+          <td style="text-align:center; color:var(--red);   font-weight:600;">${r.absent_count}</td>
+          <td>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span class="badge ${cls}">${r.percentage}%</span>
+              <div class="pct-bar" style="width:80px; flex-shrink:0;">
+                <div class="pct-fill ${cls}" style="width:${Math.min(r.percentage,100)}%"></div>
+              </div>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    initSubjects();
+    loadSummary();
+  </script>
+</body>
+</html>

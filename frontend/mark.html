@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mark Attendance — AttendIQ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/shared.css"/>
+  <style>
+    .attendance-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+      margin-top: 24px;
+    }
+    .student-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 18px;
+      display: flex; align-items: center;
+      justify-content: space-between;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .student-card.present  { border-color: var(--green); background: rgba(22,163,74,.04); }
+    .student-card.absent   { border-color: var(--red);   background: rgba(220,38,38,.04); }
+    .student-info { display: flex; align-items: center; gap: 12px; }
+    .s-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--paper); display: grid; place-items: center;
+      font-size: 15px; font-weight: 700; color: var(--muted);
+      border: 1.5px solid var(--border); flex-shrink: 0;
+    }
+    .s-name  { font-weight: 600; font-size: .9rem; }
+    .s-roll  { font-size: .75rem; color: var(--muted); }
+    .toggle-group { display: flex; gap: 6px; }
+    .toggle-btn {
+      padding: 6px 13px; border-radius: 8px; border: 1.5px solid var(--border);
+      font-size: .8rem; font-weight: 600; cursor: pointer;
+      background: var(--paper); transition: all .15s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .toggle-btn.p-active { background: var(--green); color: white; border-color: var(--green); }
+    .toggle-btn.a-active { background: var(--red);   color: white; border-color: var(--red); }
+
+    .summary-bar {
+      display: flex; align-items: center; gap: 16px;
+      padding: 14px 20px;
+      background: var(--paper); border-radius: 10px;
+      border: 1px solid var(--border); margin-top: 20px;
+      font-size: .88rem; color: var(--muted);
+    }
+    .summary-bar strong { color: var(--ink); }
+    #presentCount { color: var(--green); font-weight: 700; font-size: 1.1rem; }
+    #absentCount  { color: var(--red);   font-weight: 700; font-size: 1.1rem; }
+  </style>
+</head>
+<body>
+  <div class="sidebar" id="sidebar"></div>
+  <div id="toast"></div>
+
+  <div class="main-content">
+    <div class="page-header">
+      <div>
+        <h1>Mark Attendance</h1>
+        <p>Select subject and date, then mark each student</p>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="card">
+      <div class="form-row cols-3">
+        <div class="form-group">
+          <label>Subject</label>
+          <select id="subjectSelect" onchange="loadStudents()">
+            <option value="">— Select Subject —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="dateInput" onchange="loadStudents()"/>
+        </div>
+        <div class="form-group" style="justify-content:flex-end;">
+          <label>&nbsp;</label>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-secondary" onclick="markAll('Present')">✅ All Present</button>
+            <button class="btn btn-secondary" onclick="markAll('Absent')">❌ All Absent</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary bar -->
+    <div class="summary-bar" id="summaryBar" style="display:none;">
+      <span>Total: <strong id="totalCount">0</strong></span>
+      <span>Present: <span id="presentCount">0</span></span>
+      <span>Absent: <span id="absentCount">0</span></span>
+      <div style="flex:1;"></div>
+      <button class="btn btn-primary" onclick="submitAttendance()">💾 &nbsp;Save Attendance</button>
+    </div>
+
+    <!-- Student Grid -->
+    <div id="studentGrid" class="attendance-grid"></div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    if (!requireAuth()) throw 0;
+    document.getElementById('sidebar').innerHTML = renderSidebar('mark');
+    document.getElementById('dateInput').value = today();
+
+    let students = [];
+    let markings = {}; // { student_id: 'Present'|'Absent' }
+
+    // Load subjects
+    async function initSubjects() {
+      const res = await apiFetch('/subjects');
+      if (res.success) {
+        const sel = document.getElementById('subjectSelect');
+        res.data.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = `${s.name} (${s.code})`;
+          sel.appendChild(opt);
+        });
+      }
+    }
+
+    async function loadStudents() {
+      const subjectId = document.getElementById('subjectSelect').value;
+      const date      = document.getElementById('dateInput').value;
+      if (!subjectId || !date) return;
+
+      // Load all students
+      const sRes = await apiFetch('/students');
+      students = sRes.success ? sRes.data : [];
+
+      // Load existing attendance for this date+subject
+      const aRes = await apiFetch(`/attendance/by-date?date=${date}&subject_id=${subjectId}`);
+      markings = {};
+      if (aRes.success) {
+        aRes.data.forEach(r => { markings[r.student_id] = r.status; });
+      }
+
+      renderGrid();
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('studentGrid');
+      if (!students.length) {
+        grid.innerHTML = '<div class="empty-state"><div class="icon">👥</div><p>No students found. Add students first.</p></div>';
+        return;
+      }
+
+      grid.innerHTML = students.map(s => {
+        const status = markings[s.id] || '';
+        return `
+          <div class="student-card ${status === 'Present' ? 'present' : status === 'Absent' ? 'absent' : ''}" id="card-${s.id}">
+            <div class="student-info">
+              <div class="s-avatar">${s.name.charAt(0)}</div>
+              <div>
+                <div class="s-name">${s.name}</div>
+                <div class="s-roll">Roll: ${s.roll_no}${s.class ? ' · ' + s.class : ''}</div>
+              </div>
+            </div>
+            <div class="toggle-group">
+              <button class="toggle-btn ${status === 'Present' ? 'p-active' : ''}" onclick="mark(${s.id}, 'Present')">P</button>
+              <button class="toggle-btn ${status === 'Absent'  ? 'a-active' : ''}" onclick="mark(${s.id}, 'Absent')">A</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      updateSummary();
+    }
+
+    function mark(studentId, status) {
+      markings[studentId] = status;
+      const card = document.getElementById(`card-${studentId}`);
+      card.className = `student-card ${status === 'Present' ? 'present' : 'absent'}`;
+      const [pBtn, aBtn] = card.querySelectorAll('.toggle-btn');
+      pBtn.className = `toggle-btn ${status === 'Present' ? 'p-active' : ''}`;
+      aBtn.className = `toggle-btn ${status === 'Absent'  ? 'a-active' : ''}`;
+      updateSummary();
+    }
+
+    function markAll(status) {
+      students.forEach(s => mark(s.id, status));
+    }
+
+    function updateSummary() {
+      const present = Object.values(markings).filter(v => v === 'Present').length;
+      const absent  = Object.values(markings).filter(v => v === 'Absent').length;
+      document.getElementById('totalCount').textContent   = students.length;
+      document.getElementById('presentCount').textContent = present;
+      document.getElementById('absentCount').textContent  = absent;
+      document.getElementById('summaryBar').style.display = students.length ? 'flex' : 'none';
+    }
+
+    async function submitAttendance() {
+      const subjectId = document.getElementById('subjectSelect').value;
+      const date      = document.getElementById('dateInput').value;
+
+      if (!subjectId || !date) { showToast('Select subject and date first.', 'error'); return; }
+      if (!students.length)    { showToast('No students to mark.', 'error'); return; }
+
+      const records = students.map(s => ({
+        student_id: s.id,
+        status: markings[s.id] || 'Absent'
+      }));
+
+      const res = await apiFetch('/attendance/mark', {
+        method: 'POST',
+        body: JSON.stringify({ subject_id: subjectId, date, records }),
+      });
+
+      if (res.success) {
+        showToast(res.message, 'success');
+      } else {
+        showToast(res.message || 'Error saving attendance.', 'error');
+      }
+    }
+
+    initSubjects();
+  </script>
+</body>
+</html>
