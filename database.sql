@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
     email      VARCHAR(150)  NOT NULL UNIQUE,
     password   VARCHAR(255)  NOT NULL,          -- bcrypt hash
     role       ENUM('admin','teacher') DEFAULT 'teacher',
+    status     ENUM('pending','active','disabled') NOT NULL DEFAULT 'active',  -- teachers who sign up start as 'pending' until an admin approves
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -81,14 +82,14 @@ GROUP BY s.id, sub.id;
 --  SEED DATA
 -- ─────────────────────────────────────────────
 
--- Default admin  (password: admin123)
-INSERT INTO users (name, email, password, role) VALUES
+-- Demo accounts (password for all three: password). Change these before real use.
+INSERT IGNORE INTO users (name, email, password, role) VALUES
 ('Admin User',   'admin@school.com',   '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin'),
 ('Prof. Sharma', 'sharma@school.com',  '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'teacher'),
 ('Prof. Mehta',  'mehta@school.com',   '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'teacher');
 
--- Students
-INSERT INTO students (name, roll_no, email, class) VALUES
+-- Students (INSERT IGNORE makes this file safe to run more than once)
+INSERT IGNORE INTO students (name, roll_no, email, class) VALUES
 ('Rahul Patil',   '101', 'rahul@student.com',  'MCA-1'),
 ('Priya Desai',   '102', 'priya@student.com',  'MCA-1'),
 ('Amit Joshi',    '103', 'amit@student.com',   'MCA-1'),
@@ -96,7 +97,7 @@ INSERT INTO students (name, roll_no, email, class) VALUES
 ('Rohan Naik',    '105', 'rohan@student.com',  'MCA-1');
 
 -- Subjects
-INSERT INTO subjects (name, code) VALUES
+INSERT IGNORE INTO subjects (name, code) VALUES
 ('Java Programming',   'JAVA'),
 ('Database Systems',   'DBMS'),
 ('Web Technologies',   'WEB'),
@@ -104,7 +105,7 @@ INSERT INTO subjects (name, code) VALUES
 ('Operating Systems',  'OS');
 
 -- Sample attendance records
-INSERT INTO attendance (student_id, subject_id, teacher_id, date, status) VALUES
+INSERT IGNORE INTO attendance (student_id, subject_id, teacher_id, date, status) VALUES
 (1,1,2,'2024-01-15','Present'),(1,1,2,'2024-01-16','Present'),(1,1,2,'2024-01-17','Absent'),
 (2,1,2,'2024-01-15','Present'),(2,1,2,'2024-01-16','Absent'), (2,1,2,'2024-01-17','Present'),
 (3,1,2,'2024-01-15','Absent'), (3,1,2,'2024-01-16','Present'),(3,1,2,'2024-01-17','Present'),

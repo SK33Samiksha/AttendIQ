@@ -1,38 +1,40 @@
-// backend/server.js
+// backend/server.js — checks the settings, connects to MySQL and starts the app
 require('dotenv').config();
-const express = require('express');
-const cors    = require('cors');
-const path    = require('path');
 
-const app = express();
+// Stop early with a clear message instead of failing on the first login
+const missing = ['DB_PASSWORD', 'JWT_SECRET'].filter((k) => process.env[k] === undefined || process.env[k] === '');
+if (missing.includes('JWT_SECRET')) {
+  console.error('❌ JWT_SECRET is not set. Copy backend/.env.example to backend/.env and fill it in.');
+  process.exit(1);
+}
+if (missing.includes('DB_PASSWORD')) {
+  console.warn('⚠️  DB_PASSWORD is empty. That only works if your MySQL user has no password.');
+}
 
-// ── Middleware ────────────────────────────────────────────────
-app.use(cors({ origin: '*' }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+const app = require('./app');
+const { checkConnection } = require('./config/db');
+const migrate = require('./config/migrate');
 
-// ── Serve Frontend Static Files ───────────────────────────────
-app.use(express.static(path.join(__dirname, '..', 'frontend')));
+const PORT = Number(process.env.PORT) || 5000;
 
-// ── API Routes ────────────────────────────────────────────────
-app.use('/api/auth',       require('./routes/auth'));
-app.use('/api/students',   require('./routes/students'));
-app.use('/api/subjects',   require('./routes/subjects'));
-app.use('/api/attendance', require('./routes/attendance'));
-
-// ── Health Check ──────────────────────────────────────────────
-app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'Attendance Management System API is running.' });
-});
-
-// ── Fallback to frontend for SPA-style routing ────────────────
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
-});
-
-// ── Start Server ──────────────────────────────────────────────
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
-  console.log(`📚 API docs   → http://localhost:${PORT}/api/health`);
-});
+checkConnection()
+  .then(migrate)
+  .then(() => {
+    console.log('✅ MySQL connected successfully');
+    const server = app.listen(PORT, () => {
+      console.log(`🚀 AttendIQ running at http://localhost:${PORT}`);
+    });
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${PORT} is already in use (another app is running on it).`);
+        console.error('   Stop that app, or set a different PORT in backend/.env, e.g. PORT=5001');
+        process.exit(1);
+      }
+      throw err;
+    });
+  })
+  .catch((err) => {
+    console.error('❌ MySQL connection failed:', err.message);
+    console.error('   Check DB_HOST, DB_USER, DB_PASSWORD and DB_NAME in backend/.env, and that database.sql has been run.');
+    process.exit(1);
+  });

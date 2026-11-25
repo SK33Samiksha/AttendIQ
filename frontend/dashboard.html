@@ -24,6 +24,7 @@
     </div>
 
     <!-- Stat Cards -->
+    <div class="notice" id="pendingNotice" style="display:none;"></div>
     <div class="stats-grid" id="statsGrid">
       <div class="stat-card">
         <div class="stat-icon orange">👥</div>
@@ -44,7 +45,7 @@
     </div>
 
     <!-- Recent Attendance + Summary -->
-    <div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:20px;">
+    <div class="dash-grid">
 
       <!-- Attendance Summary Table -->
       <div class="card">
@@ -101,6 +102,17 @@
       weekday:'long', day:'numeric', month:'long', year:'numeric'
     });
 
+    // Admin: point out teacher requests that are waiting
+    if (isAdmin()) {
+      loadPendingBadge().then(n => {
+        if (!n) return;
+        const box = document.getElementById('pendingNotice');
+        box.innerHTML = `<span>🧑‍🏫 <strong>${n}</strong> teacher request${n > 1 ? 's are' : ' is'} waiting for your approval.</span>
+          <a href="users.html" class="btn btn-primary btn-sm">Review</a>`;
+        box.style.display = 'flex';
+      });
+    }
+
     async function loadDashboard() {
       // Stats
       const stats = await apiFetch('/attendance/stats');
@@ -120,13 +132,13 @@
         tbody.innerHTML = summary.data.slice(0,8).map(r => {
           const cls = pctClass(r.percentage);
           return `<tr>
-            <td><strong>${r.student_name}</strong><br><span style="font-size:.75rem;color:var(--muted)">${r.roll_no}</span></td>
-            <td>${r.subject_name}</td>
+            <td><strong>${esc(r.student_name)}</strong><br><span style="font-size:.75rem;color:var(--muted)">${esc(r.roll_no)}</span></td>
+            <td>${esc(r.subject_name)}</td>
             <td>${r.present_count}/${r.total_classes}</td>
             <td>
               <span class="badge ${cls}">${r.percentage}%</span>
               <div class="pct-bar" style="margin-top:4px; width:60px">
-                <div class="pct-fill ${cls}" style="width:${r.percentage}%"></div>
+                <div class="pct-fill ${cls}" style="width:${Math.min(Number(r.percentage) || 0, 100)}%"></div>
               </div>
             </td>
           </tr>`;

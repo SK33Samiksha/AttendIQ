@@ -107,9 +107,9 @@
       tbody.innerHTML = rows.map((r, i) => `
         <tr>
           <td style="color:var(--muted); font-size:.8rem;">${i+1}</td>
-          <td><strong>${r.student_name}</strong></td>
-          <td>${r.roll_no}</td>
-          <td>${r.subject_name}</td>
+          <td><strong>${esc(r.student_name)}</strong></td>
+          <td>${esc(r.roll_no)}</td>
+          <td>${esc(r.subject_name)}</td>
           <td>${formatDate(r.date)}</td>
           <td><span class="badge ${r.status === 'Present' ? 'present' : 'absent'}">${r.status}</span></td>
         </tr>

@@ -49,6 +49,7 @@
     if (!requireAuth()) throw 0;
     document.getElementById('sidebar').innerHTML = renderSidebar('subjects');
 
+    let allSubjects = [];
     const colors = ['#e85d04','#3b82f6','#16a34a','#8b5cf6','#06b6d4','#f59e0b','#ec4899'];
 
     async function loadSubjects() {
@@ -60,6 +61,7 @@
         return;
       }
 
+      allSubjects = res.data;
       grid.innerHTML = res.data.map((s, i) => {
         const color = colors[i % colors.length];
         return `
@@ -72,12 +74,12 @@
             <div style="width:52px; height:52px; border-radius:14px; background:${color}15;
               display:grid; place-items:center; font-size:22px; flex-shrink:0; color:${color};">📖</div>
             <div style="flex:1;">
-              <div style="font-family:'Syne',sans-serif; font-weight:700; font-size:1rem;">${s.name}</div>
+              <div style="font-family:'Syne',sans-serif; font-weight:700; font-size:1rem;">${esc(s.name)}</div>
               <div style="font-size:.75rem; color:var(--muted); margin-top:2px;">
-                Code: <strong style="color:${color};">${s.code}</strong>
+                Code: <strong style="color:${color};">${esc(s.code)}</strong>
               </div>
             </div>
-            <button class="btn btn-danger btn-sm" onclick="deleteSubject(${s.id}, '${s.name}')">Delete</button>
+            ${isAdmin() ? `<button class="btn btn-danger btn-sm" onclick="deleteSubject(${s.id})">Delete</button>` : ''}
           </div>
         `;
       }).join('');
@@ -103,8 +105,9 @@
       else showToast(res.message || 'Error.', 'error');
     }
 
-    async function deleteSubject(id, name) {
-      if (!confirm(`Delete subject "${name}"?`)) return;
+    async function deleteSubject(id) {
+      const s = allSubjects.find(x => x.id === id);
+      if (!s || !confirm(`Delete subject "${s.name}"? All attendance for this subject will also be deleted.`)) return;
       const res = await apiFetch(`/subjects/${id}`, { method: 'DELETE' });
       if (res.success) { showToast('Subject deleted.', 'success'); loadSubjects(); }
       else showToast(res.message, 'error');

@@ -158,10 +158,10 @@
         return `
           <div class="student-card ${status === 'Present' ? 'present' : status === 'Absent' ? 'absent' : ''}" id="card-${s.id}">
             <div class="student-info">
-              <div class="s-avatar">${s.name.charAt(0)}</div>
+              <div class="s-avatar">${esc(s.name.charAt(0))}</div>
               <div>
-                <div class="s-name">${s.name}</div>
-                <div class="s-roll">Roll: ${s.roll_no}${s.class ? ' · ' + s.class : ''}</div>
+                <div class="s-name">${esc(s.name)}</div>
+                <div class="s-roll">Roll: ${esc(s.roll_no)}${s.class ? ' · ' + esc(s.class) : ''}</div>
               </div>
             </div>
             <div class="toggle-group">
@@ -204,6 +204,10 @@
 
       if (!subjectId || !date) { showToast('Select subject and date first.', 'error'); return; }
       if (!students.length)    { showToast('No students to mark.', 'error'); return; }
+
+      // Students nobody clicked are saved as Absent, so ask first
+      const unmarked = students.filter(s => !markings[s.id]).length;
+      if (unmarked && !confirm(`${unmarked} student(s) are not marked yet and will be saved as Absent. Continue?`)) return;
 
       const records = students.map(s => ({
         student_id: s.id,

@@ -88,7 +88,7 @@
     function filterStudents() {
       const q = document.getElementById('searchInput').value.toLowerCase();
       const filtered = allStudents.filter(s =>
-        s.name.toLowerCase().includes(q) || s.roll_no.toLowerCase().includes(q)
+        s.name.toLowerCase().includes(q) || String(s.roll_no).toLowerCase().includes(q)
       );
       document.getElementById('studentCount').textContent = `${filtered.length} student(s)`;
       renderTable(filtered);
@@ -107,16 +107,16 @@
             <div style="display:flex; align-items:center; gap:10px;">
               <div style="width:32px; height:32px; border-radius:50%; background:var(--paper);
                 border:1.5px solid var(--border); display:grid; place-items:center;
-                font-weight:700; font-size:.85rem; color:var(--muted);">${s.name.charAt(0)}</div>
-              <strong>${s.name}</strong>
+                font-weight:700; font-size:.85rem; color:var(--muted);">${esc(s.name.charAt(0))}</div>
+              <strong>${esc(s.name)}</strong>
             </div>
           </td>
-          <td>${s.roll_no}</td>
-          <td>${s.email || '<span style="color:var(--muted)">—</span>'}</td>
-          <td>${s.class || '<span style="color:var(--muted)">—</span>'}</td>
+          <td>${esc(s.roll_no)}</td>
+          <td>${s.email ? esc(s.email) : '<span style="color:var(--muted)">—</span>'}</td>
+          <td>${s.class ? esc(s.class) : '<span style="color:var(--muted)">—</span>'}</td>
           <td>
             <button class="btn btn-secondary btn-sm" onclick="editStudent(${s.id})">Edit</button>
-            <button class="btn btn-danger btn-sm" style="margin-left:6px;" onclick="deleteStudent(${s.id}, '${s.name}')">Delete</button>
+            ${isAdmin() ? `<button class="btn btn-danger btn-sm" style="margin-left:6px;" onclick="deleteStudent(${s.id})">Delete</button>` : ''}
           </td>
         </tr>
       `).join('');
@@ -165,8 +165,9 @@
       }
     }
 
-    async function deleteStudent(id, name) {
-      if (!confirm(`Delete student "${name}"? This will also delete their attendance records.`)) return;
+    async function deleteStudent(id) {
+      const s = allStudents.find(x => x.id === id);
+      if (!s || !confirm(`Delete student "${s.name}"? This will also delete their attendance records.`)) return;
       const res = await apiFetch(`/students/${id}`, { method: 'DELETE' });
       if (res.success) { showToast('Student deleted.', 'success'); loadStudents(); }
       else showToast(res.message, 'error');

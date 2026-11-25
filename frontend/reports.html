@@ -104,7 +104,7 @@
       const min = parseFloat(document.getElementById('filterMin').value) || 0;
 
       const filtered = allData.filter(r =>
-        r.student_name.toLowerCase().includes(q) && r.percentage >= min
+        r.student_name.toLowerCase().includes(q) && Number(r.percentage) >= min
       );
 
       document.getElementById('rowCount').textContent = `${filtered.length} record(s)`;
@@ -119,10 +119,10 @@
         const cls = pctClass(r.percentage);
         return `<tr>
           <td style="color:var(--muted); font-size:.8rem;">${i+1}</td>
-          <td><strong>${r.student_name}</strong></td>
-          <td>${r.roll_no}</td>
-          <td>${r.class || '—'}</td>
-          <td>${r.subject_name}</td>
+          <td><strong>${esc(r.student_name)}</strong></td>
+          <td>${esc(r.roll_no)}</td>
+          <td>${esc(r.class || '—')}</td>
+          <td>${esc(r.subject_name)}</td>
           <td style="text-align:center;">${r.total_classes}</td>
           <td style="text-align:center; color:var(--green); font-weight:600;">${r.present_count}</td>
           <td style="text-align:center; color:var(--red);   font-weight:600;">${r.absent_count}</td>
