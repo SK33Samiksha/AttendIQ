@@ -1,14 +1,18 @@
 // backend/app.js — the Express app (started by server.js, also used by the tests)
 const express   = require('express');
 const path      = require('path');
+const fs        = require('fs');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
 
 app.use(express.json({ limit: '1mb' }));
 
-// The frontend is served by this same server, so no CORS setup is needed.
-app.use(express.static(path.join(__dirname, '..', 'frontend')));
+// The React app (built into frontend/dist by `npm run build`) is served by this same
+// server, so the website and the API share one address and no CORS setup is needed.
+const FRONTEND_DIST = path.join(__dirname, '..', 'frontend', 'dist');
+const FRONTEND_INDEX = path.join(FRONTEND_DIST, 'index.html');
+app.use(express.static(FRONTEND_DIST));
 
 // Slow down password guessing and sign-up spam: 20 attempts per 15 minutes per IP
 const authLimiter = rateLimit({
@@ -37,9 +41,17 @@ app.use('/api', (req, res) => {
   res.status(404).json({ success: false, message: 'Not found.' });
 });
 
-// Anything else falls back to the login page
+// Any other URL (/dashboard, /students, ...) is a page of the React app: send index.html
+// and React Router shows the right page. If the app hasn't been built yet, say how.
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
+  if (!fs.existsSync(FRONTEND_INDEX)) {
+    return res.status(503).type('text').send(
+      'The React frontend has not been built yet.\n\n' +
+      'From the project folder run:  npm run build\n' +
+      'Then refresh this page. (While developing you can instead run "npm run dev" in the frontend folder.)'
+    );
+  }
+  res.sendFile(FRONTEND_INDEX);
 });
 
 // ── Error handler ─────────────────────────────────────────────

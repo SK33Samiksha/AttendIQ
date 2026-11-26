@@ -1,10 +1,11 @@
-/* frontend/css/shared.css */
+/* Styles shared by every page after sign-in */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
   --ink:     #0d1117;
   --paper:   #f5f0e8;
   --surface: #ffffff;
+  --white:   #ffffff;
   --accent:  #e85d04;
   --accent2: #faa307;
   --green:   #16a34a;
@@ -21,6 +22,9 @@ body {
   display: flex;
   min-height: 100vh;
 }
+
+/* React renders everything inside <div id="root"> */
+#root { display: flex; flex: 1; min-width: 0; }
 
 /* ── SIDEBAR ─────────────────────────────────────────── */
 .sidebar {
@@ -45,7 +49,7 @@ body {
   font-size: 18px; flex-shrink: 0;
 }
 .brand-name {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Syne', sans-serif;
   font-weight: 700; font-size: 1rem; color: white;
   line-height: 1.1;
 }
@@ -113,7 +117,7 @@ body {
   display: flex; align-items: center; justify-content: space-between;
 }
 .page-header h1 {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Syne', sans-serif;
   font-size: 1.75rem; font-weight: 700; color: var(--ink);
 }
 .page-header p { font-size: .9rem; color: var(--muted); margin-top: 2px; }
@@ -153,7 +157,7 @@ body {
 .stat-icon.amber  { background: rgba(250,163,7,.15); }
 
 .stat-value {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Syne', sans-serif;
   font-size: 1.8rem; font-weight: 700; color: var(--ink);
   line-height: 1;
 }
@@ -265,7 +269,7 @@ tbody tr:hover td { background: rgba(245,240,232,.6); }
 }
 @keyframes fadeIn { from { opacity:0; transform: scale(.95); } to { opacity:1; transform: scale(1); } }
 .modal h3 {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Syne', sans-serif;
   font-size: 1.2rem; font-weight: 700; margin-bottom: 20px;
 }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
@@ -313,7 +317,7 @@ tbody tr:hover td { background: rgba(245,240,232,.6); }
   border-radius: 10px; background: #e85d04; color: #fff;
   font-size: .72rem; font-weight: 700; display: inline-grid; place-items: center;
 }
-.nav-badge[hidden] { display: none; }
+.nav-item.active .nav-badge { background: #fff; color: var(--accent); }
 .btn-link-light {
   width: 100%; background: none; border: 0; color: rgba(255,255,255,.65);
   font-size: .8rem; padding: 6px 0 10px; cursor: pointer; text-align: center;
@@ -327,6 +331,47 @@ tbody tr:hover td { background: rgba(245,240,232,.6); }
   background: rgba(250,163,7,.12); border: 1px solid rgba(250,163,7,.35); color: #92400e;
   padding: 14px 18px; border-radius: 12px; margin-bottom: 20px; font-size: .92rem;
 }
+
+/* ── Small helpers used by the React pages ─────────────── */
+.card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; }
+.card-head h3, .card-title { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; }
+.muted-small { font-size: .8rem; color: var(--muted); font-weight: 400; font-family: 'DM Sans', sans-serif; }
+.center { text-align: center; }
+.text-green { color: var(--green); font-weight: 600; }
+.text-red { color: var(--red); font-weight: 600; }
+.capitalize { text-transform: capitalize; }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+a.btn { text-decoration: none; }
+
+.quick-actions { display: flex; flex-direction: column; gap: 10px; }
+.quick-actions .btn { justify-content: center; }
+.today-box {
+  margin-top: 24px; padding: 16px; border-radius: 12px;
+  background: rgba(232,93,4,.06); border: 1px solid rgba(232,93,4,.15);
+}
+.today-box .label { font-size: .78rem; color: var(--muted); margin-bottom: 4px; }
+.today-box .value { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.1rem; }
+.today-box .value.accent { color: var(--accent); }
+
+.name-cell { display: flex; align-items: center; gap: 10px; }
+.initial-circle {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  background: var(--paper); border: 1.5px solid var(--border);
+  display: grid; place-items: center; font-weight: 700; font-size: .85rem; color: var(--muted);
+}
+
+.subject-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.subject-card {
+  background: white; border-radius: 16px; border: 1px solid var(--border); padding: 24px;
+  box-shadow: 0 2px 12px rgba(13,17,23,.05); display: flex; align-items: center; gap: 16px;
+  transition: transform .2s, box-shadow .2s;
+}
+.subject-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(13,17,23,.1); }
+.subject-icon { width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; font-size: 22px; flex-shrink: 0; }
+.subject-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; font-size: .82rem; color: var(--muted); }
+.legend .badge { margin-right: 4px; }
 
 /* ── PHONES & TABLETS ─────────────────────────────────────
    Below 860px the sidebar becomes a slide-in menu opened from a top bar. */

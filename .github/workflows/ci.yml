@@ -1,4 +1,4 @@
-# Runs the API tests against a real MySQL database on every push (see the "Actions" tab)
+# On every push: runs the API tests against a real MySQL database and builds the React app (see the "Actions" tab)
 name: CI
 
 on:
@@ -37,3 +37,19 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npm test
+
+  # Makes sure the React frontend still builds
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
